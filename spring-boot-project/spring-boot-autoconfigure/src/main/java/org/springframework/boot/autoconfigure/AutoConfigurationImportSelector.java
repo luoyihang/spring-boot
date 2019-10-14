@@ -93,6 +93,7 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		if (!isEnabled(annotationMetadata)) {
 			return NO_IMPORTS;
 		}
+		// 加载自动装配的元信息
 		AutoConfigurationMetadata autoConfigurationMetadata = AutoConfigurationMetadataLoader
 				.loadMetadata(this.beanClassLoader);
 		AutoConfigurationEntry autoConfigurationEntry = getAutoConfigurationEntry(autoConfigurationMetadata,
@@ -112,12 +113,18 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		if (!isEnabled(annotationMetadata)) {
 			return EMPTY_ENTRY;
 		}
+		// 获取 @EnableAutoConfiguration 标注的类的元信息
 		AnnotationAttributes attributes = getAttributes(annotationMetadata);
+		// 自动装配的候选类名集合
 		List<String> configurations = getCandidateConfigurations(annotationMetadata, attributes);
+		// 移除重复对象，但是为什么会重复呢？
 		configurations = removeDuplicates(configurations);
+		// 排除自动装配的名单
 		Set<String> exclusions = getExclusions(annotationMetadata, attributes);
 		checkExcludedClasses(configurations, exclusions);
 		configurations.removeAll(exclusions);
+		// 经过去重、排除自动装配后的 configurations 再执行过滤操作
+		// 其中 autoConfigurationMetadata 为 selectImports 方法中 所加载的自动装配的元信息
 		configurations = filter(configurations, autoConfigurationMetadata);
 		fireAutoConfigurationImportEvents(configurations, exclusions);
 		return new AutoConfigurationEntry(configurations, exclusions);
@@ -168,6 +175,11 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 	 * @return a list of candidate configurations
 	 */
 	protected List<String> getCandidateConfigurations(AnnotationMetadata metadata, AnnotationAttributes attributes) {
+		// 1. 搜索指定ClassLoader 下所有的 MATA-INF/spring.factories 资源内容（多个）
+		// 2. 将所有 MATA-INF/spring.factories 资源内容作为 Properties 文件读取，相同内容合并,
+		// key 为接口的全类名， value 是实现类全类名列表，作为 loadSpringFactories 方法的返回值
+		// 3. 获取对应 key 内容， map.getOrDefault(factoryClassName, Collections.emptyList()) 
+		// 注：map的内容有 EnableAutoConfiguration、BeanInfoFactory、ApplicationListener、ApplicationContextInitializer、EnvironmentPostProcessor等等
 		List<String> configurations = SpringFactoriesLoader.loadFactoryNames(getSpringFactoriesLoaderFactoryClass(),
 				getBeanClassLoader());
 		Assert.notEmpty(configurations, "No auto configuration classes found in META-INF/spring.factories. If you "
