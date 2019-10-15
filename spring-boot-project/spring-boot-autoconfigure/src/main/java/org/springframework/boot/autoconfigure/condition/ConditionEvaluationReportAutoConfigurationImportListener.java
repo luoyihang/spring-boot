@@ -32,6 +32,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurationImportListener;
 class ConditionEvaluationReportAutoConfigurationImportListener
 		implements AutoConfigurationImportListener, BeanFactoryAware {
 
+	// 当前 listener 的 beanFactory
 	private ConfigurableListableBeanFactory beanFactory;
 
 	@Override

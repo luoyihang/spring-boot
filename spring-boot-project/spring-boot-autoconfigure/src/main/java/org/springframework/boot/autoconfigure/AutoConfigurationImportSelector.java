@@ -121,11 +121,14 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		configurations = removeDuplicates(configurations);
 		// 排除自动装配的名单
 		Set<String> exclusions = getExclusions(annotationMetadata, attributes);
+		// 检查排除自动装配的类名是否合法
 		checkExcludedClasses(configurations, exclusions);
 		configurations.removeAll(exclusions);
 		// 经过去重、排除自动装配后的 configurations 再执行过滤操作
 		// 其中 autoConfigurationMetadata 为 selectImports 方法中 所加载的自动装配的元信息
+		// 过滤 META-INF/spring.factories 资源中当前 ClassLoader 不存在的 Class
 		configurations = filter(configurations, autoConfigurationMetadata);
+		// 触发自动装配的导入事件
 		fireAutoConfigurationImportEvents(configurations, exclusions);
 		return new AutoConfigurationEntry(configurations, exclusions);
 	}
@@ -178,7 +181,7 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		// 1. 搜索指定ClassLoader 下所有的 MATA-INF/spring.factories 资源内容（多个）
 		// 2. 将所有 MATA-INF/spring.factories 资源内容作为 Properties 文件读取，相同内容合并,
 		// key 为接口的全类名， value 是实现类全类名列表，作为 loadSpringFactories 方法的返回值
-		// 3. 获取对应 key 内容， map.getOrDefault(factoryClassName, Collections.emptyList()) 
+		// 3. 获取对应 key 内容， map.getOrDefault(factoryClassName, Collections.emptyList())
 		// 注：map的内容有 EnableAutoConfiguration、BeanInfoFactory、ApplicationListener、ApplicationContextInitializer、EnvironmentPostProcessor等等
 		List<String> configurations = SpringFactoriesLoader.loadFactoryNames(getSpringFactoriesLoaderFactoryClass(),
 				getBeanClassLoader());
@@ -197,12 +200,14 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 	}
 
 	private void checkExcludedClasses(List<String> configurations, Set<String> exclusions) {
+		// 无效的排除项
 		List<String> invalidExcludes = new ArrayList<>(exclusions.size());
 		for (String exclusion : exclusions) {
 			if (ClassUtils.isPresent(exclusion, getClass().getClassLoader()) && !configurations.contains(exclusion)) {
 				invalidExcludes.add(exclusion);
 			}
 		}
+		// 抛异常
 		if (!invalidExcludes.isEmpty()) {
 			handleInvalidExcludes(invalidExcludes);
 		}
@@ -300,6 +305,7 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 			AutoConfigurationImportEvent event = new AutoConfigurationImportEvent(this, configurations, exclusions);
 			for (AutoConfigurationImportListener listener : listeners) {
 				invokeAwareMethods(listener);
+				// 调用监听方法，用于记录自动装配的条件评估报告
 				listener.onAutoConfigurationImportEvent(event);
 			}
 		}
